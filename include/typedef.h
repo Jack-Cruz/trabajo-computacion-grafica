@@ -33,4 +33,7 @@ typedef unsigned short int ui16;
 typedef unsigned int       ui32;
 typedef unsigned long long ui64;
 
+const i32 FSIZE = sizeof(f32);
+const i32 ISIZE = sizeof(i32);
+
 #endif 

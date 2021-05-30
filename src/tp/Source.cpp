@@ -13,23 +13,25 @@
 #include "texture.h"
 #include "camera.h"
 
-const i32 FSIZE = sizeof(f32);
-const i32 ISIZE = sizeof(i32);
+// settings
 const i32 SCR_WIDTH = 960;
 const i32 SCR_HEIGHT = 540;
 const f32  ASPECT = 16.0f / 9.0f;
 
+// camera
 Cam cam(0.0f, 16.0f, 0.0f);
-
 f32 lastx;
 f32 lasty;
 bool firstMouse = true;
+
+// timing
 f32 deltaTime = 0.0f;
 f32 lastFrame = 0.0f;
 
-/**
- * keyboard input processing
- **/
+// light
+vec3 lightPos(10.0f, 10.0f, 25.0f);
+
+// input processing
 void processInput(GLFWwindow* window) {
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
 		glfwSetWindowShouldClose(window, true);
@@ -164,11 +166,13 @@ void load_positions(u32& n, std::vector<glm::vec3>& positions) {
 
 i32 main() {
 	GLFWwindow* window = glutilInit(3, 3, SCR_WIDTH, SCR_HEIGHT, "Generacion procedural de terrenos");
-
-	Shader* shader = new Shader();
 	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 	glfwSetCursorPosCallback(window, mouse_callback);
 	glfwSetScrollCallback(window, scroll_callback);
+
+	string shader_path = "D:/JC/UPC 2021-01/Comp. Graf/Alessandro/Git alessandro/trabajo-computacion-grafica/src/tp";
+	Shader* lightingShader = new Shader("colors.vert", "colors.frag", shader_path);
+	Shader* lightCubeShader = new Shader("light_cube.vert", "light_cube.frag", shader_path);
 
 	Cube* cube = new Cube();
 
@@ -178,30 +182,36 @@ i32 main() {
 	generate_random(n, -5, 15, 20);
 	load_positions(n, positions);
 
-	
-	Vao* vao = new Vao();
+
+	// configuracion del vbo y ebo
 	Vbo* vbo = new Vbo();
 	Ebo* ebo = new Ebo();
+	vbo->SetBufferData(cube->getVSize(), cube->getVertices());
+	ebo->SetBufferData(cube->getISize(), cube->getIndices());
 
-	vbo->SetBufferData(cube->getVSize() * FSIZE, cube->getVertices());
-	ebo->SetBufferData(cube->getISize() * ISIZE, cube->getIndices());
+	Vao* cubeVao = new Vao();
+	vbo->Bind();
+	ebo->Bind();
+	cubeVao->SetVertexAttributes(0, 3, 11 * FSIZE, 0); // posicion
+	cubeVao->SetVertexAttributes(1, 3, 11 * FSIZE, 3); // color
+	cubeVao->SetVertexAttributes(2, 2, 11 * FSIZE, 6); // texture
+	cubeVao->SetVertexAttributes(3, 3, 11 * FSIZE, 8); // texture
+	cubeVao->Unbind();
 
-
-	// vertex attributes
-	vao->SetVertexAttributes(0, 3, 8 * FSIZE, 0); // posicion
-	vao->SetVertexAttributes(1, 3, 8 * FSIZE, 3); // color
-	vao->SetVertexAttributes(2, 2, 8 * FSIZE, 6); // texture
-
-	vao->Unbind();
+	Vao* lightCubeVao = new Vao();
+	vbo->Bind();
+	ebo->Bind();
+	lightCubeVao->SetVertexAttributes(0, 3, 11 * FSIZE, 0); // posicion
+	lightCubeVao->Unbind();
 
 	// load and create a texture
-	string home_path = "";
-	Texture* texture0 = new Texture(GL_TEXTURE0, "agua.jpeg", home_path + "resources/textures");
-	Texture* texture1 = new Texture(GL_TEXTURE0, "dirt.jpeg", home_path + "resources/textures");
-	Texture* texture2 = new Texture(GL_TEXTURE0, "piedra.jpg", home_path + "resources/textures");
+	string textures_path = "D:/JC/UPC 2021-01/Comp. Graf/Alessandro/Git alessandro/trabajo-computacion-grafica/";
+	Texture* texture0 = new Texture(GL_TEXTURE0, "agua.jpeg", textures_path + "resources/textures");
+	Texture* texture1 = new Texture(GL_TEXTURE0, "dirt.jpeg", textures_path + "resources/textures");
+	Texture* texture2 = new Texture(GL_TEXTURE0, "piedra.jpg", textures_path + "resources/textures");
 
-	shader->useProgram();
-	shader->setI32("texture0", 0);
+	lightingShader->useProgram();
+	lightingShader->setI32("texture0", 0);
 
 	glEnable(GL_DEPTH_TEST);
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
@@ -213,20 +223,26 @@ i32 main() {
 
 
 		processInput(window);
-		glClearColor(0.1f, 0.2f, 0.3f, 1.0f);
+		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 
 		//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-		shader->useProgram();
-		
 
+		// Cube objeto
+		lightingShader->useProgram();
+		lightingShader->setVec3("lightColor", 1.0f, 1.0f, 1.0f);
+		lightingShader->setVec3("lightPos", lightPos);
+		lightingShader->setVec3("viewPos", cam.getPos());
+
+
+		// uniforms
 		mat4 projection = perspective(cam.getZoom(), ASPECT, 0.1f, 100.0f);
-		shader->setMat4("proj", projection);
-		shader->setMat4("view", cam.getViewM4());
+		lightingShader->setMat4("proj", projection);
+		lightingShader->setMat4("view", cam.getViewM4());
 
-		vao->Bind();
-
+		// draw
+		cubeVao->Bind();
 		for (u32 i = 0; i < positions.size(); ++i) {
 			if(positions[i].y < 0)
 				texture0->Bind();
@@ -237,20 +253,39 @@ i32 main() {
 
 			mat4 model = mat4(1.0f);
 			model = translate(model, positions[i]);
-			shader->setMat4("model", model);
+			lightingShader->setMat4("model", model);
 
-			glDrawElements(GL_TRIANGLES, cube->getISize() * ISIZE, GL_UNSIGNED_INT, 0);
+			glDrawElements(GL_TRIANGLES, cube->getISize(), GL_UNSIGNED_INT, 0);
 		}
+
+
+
+		// Cube de luz
+		lightCubeShader->useProgram();
+		lightCubeShader->setMat4("proj", projection);
+		lightCubeShader->setMat4("view", cam.getViewM4());
+
+		// uniforms
+		mat4 model = mat4(1.0f);
+		model = translate(model, lightPos);
+		model = scale(model, vec3(0.2f)); // a smaller cube
+		lightCubeShader->setMat4("model", model);
+
+		// draw
+		lightCubeVao->Bind();
+		glDrawElements(GL_TRIANGLES, cube->getISize(), GL_UNSIGNED_INT, 0);
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 	}
-	delete vao;
+	delete cubeVao;
+	delete lightCubeVao;
 	delete vbo;
 	delete ebo;
 
 	delete cube;
-	delete shader;
+	delete lightingShader;
+	delete lightCubeShader;
 
 	return 0;
 }
