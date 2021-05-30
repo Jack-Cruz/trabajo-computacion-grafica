@@ -1,17 +1,17 @@
-#include "glutil2.h"
+#include <glutil2.h>
 
 #include <vector>
 #include <stdlib.h> // aleatorios
 #include <time.h> // aleatorios
 #include <math.h>
 
-#include "vao.h"
-#include "vbo.h"
-#include "ebo.h"
-#include "shader.h"
-#include "cube.h"
-#include "texture.h"
-#include "camera.h"
+#include <vao.h>
+#include <vbo.h>
+#include <ebo.h>
+#include <shader.h>
+#include <cube.h>
+#include <texture.h>
+#include <camera.h>
 
 // settings
 const i32 SCR_WIDTH = 960;
@@ -170,7 +170,7 @@ i32 main() {
 	glfwSetCursorPosCallback(window, mouse_callback);
 	glfwSetScrollCallback(window, scroll_callback);
 
-	string shader_path = "D:/JC/UPC 2021-01/Comp. Graf/Alessandro/Git alessandro/trabajo-computacion-grafica/src/tp";
+	string shader_path = "bin";
 	Shader* lightingShader = new Shader("colors.vert", "colors.frag", shader_path);
 	Shader* lightCubeShader = new Shader("light_cube.vert", "light_cube.frag", shader_path);
 
@@ -205,7 +205,7 @@ i32 main() {
 	lightCubeVao->Unbind();
 
 	// load and create a texture
-	string textures_path = "D:/JC/UPC 2021-01/Comp. Graf/Alessandro/Git alessandro/trabajo-computacion-grafica/";
+	string textures_path = "";
 	Texture* texture0 = new Texture(GL_TEXTURE0, "agua.jpeg", textures_path + "resources/textures");
 	Texture* texture1 = new Texture(GL_TEXTURE0, "dirt.jpeg", textures_path + "resources/textures");
 	Texture* texture2 = new Texture(GL_TEXTURE0, "piedra.jpg", textures_path + "resources/textures");
